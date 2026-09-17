@@ -480,7 +480,7 @@ def text(action: str, content: str = None, bold: bool = None, italic: bool = Non
 @mcp.tool
 def spreadsheet(action: str, sheet_name: str = None, cell_address: str = None,
                 value: str = None, range_address: str = None, new_name: str = None,
-                position: int = None) -> dict:
+                position: int = None, data: list = None, formatting: dict = None) -> dict:
     """
     Access Calc spreadsheet cells and sheets.
 
@@ -490,6 +490,8 @@ def spreadsheet(action: str, sheet_name: str = None, cell_address: str = None,
             - "get_cell": Get the value of a single cell (requires cell_address)
             - "set_cell": Set the value of a single cell (requires cell_address, value)
             - "get_range": Get a rectangular range of cells as a 2D array (requires range_address)
+            - "set_range": Write a 2D array of values to a range (requires range_address, data)
+            - "format_range": Format a range (requires range_address, formatting)
             - "rename": Rename a sheet (requires sheet_name, new_name)
             - "duplicate": Duplicate a sheet with contents (requires sheet_name, new_name; optional position)
             - "delete": Delete a sheet (requires sheet_name; cannot delete the last sheet)
@@ -498,6 +500,10 @@ def spreadsheet(action: str, sheet_name: str = None, cell_address: str = None,
         cell_address: Cell address like 'A1', 'B5', or 'Sheet1.A1'
         value: Value to set for "set_cell" (number or text)
         range_address: Range like 'A1:F20' or 'Sheet1.A1:F20'
+        data: 2D array (list of rows) for "set_range"
+        formatting: Format options for "format_range": bold (bool), italic (bool),
+                    underline (bool), font_size (int), font_name (str),
+                    background_color (int, RGB), border (bool)
         new_name: New sheet name for "rename" and "duplicate"
         position: 0-based insertion index for "duplicate" (default: end of sheet list)
 
@@ -527,6 +533,20 @@ def spreadsheet(action: str, sheet_name: str = None, cell_address: str = None,
         if sheet_name:
             data["sheet_name"] = sheet_name
         return call_libreoffice("/tools/get_cell_range_live", "POST", data)
+    elif action == "set_range":
+        if range_address is None or data is None:
+            return {"error": "Action 'set_range' requires parameters 'range_address' and 'data'"}
+        body = {"range_address": range_address, "data": data}
+        if sheet_name:
+            body["sheet_name"] = sheet_name
+        return call_libreoffice("/tools/set_cell_range_live", "POST", body)
+    elif action == "format_range":
+        if range_address is None or formatting is None:
+            return {"error": "Action 'format_range' requires parameters 'range_address' and 'formatting'"}
+        body = {"range_address": range_address, "formatting": formatting}
+        if sheet_name:
+            body["sheet_name"] = sheet_name
+        return call_libreoffice("/tools/format_cell_range_live", "POST", body)
     elif action == "rename":
         if sheet_name is None or new_name is None:
             return {"error": "Action 'rename' requires parameters 'sheet_name' and 'new_name'"}
@@ -547,6 +567,7 @@ def spreadsheet(action: str, sheet_name: str = None, cell_address: str = None,
     else:
         return {"error": f"Invalid action '{action}'",
                 "valid_actions": ["list_sheets", "get_cell", "set_cell", "get_range",
+                                  "set_range", "format_range",
                                   "rename", "duplicate", "delete"]}
 
 

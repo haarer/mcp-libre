@@ -2569,6 +2569,81 @@ class UNOBridge:
             logging.error(f"format_cell_range failed: {e}")
             return {"success": False, "error": str(e)}
 
+    def set_cell_range(self, range_address: str, data: List[List[Any]],
+                       sheet_name: Optional[str] = None, doc: Any = None) -> Dict[str, Any]:
+        """Write a 2D array of values to a cell range (e.g., 'A1:C10').
+        Numbers are written as numeric values; other values as strings."""
+        try:
+            if doc is None:
+                doc = self.get_active_document()
+            if not doc:
+                return {"success": False, "error": "No active document"}
+            if not self._is_calc(doc):
+                return {"success": False, "error": "Active document is not a spreadsheet"}
+            if not range_address:
+                return {"success": False, "error": "range_address is required"}
+            if not isinstance(data, list) or not data:
+                return {"success": False, "error": "data must be a non-empty 2D list"}
+
+            if "." in range_address and not sheet_name:
+                sheet_name, range_address = range_address.split(".", 1)
+
+            sheet = self._get_sheet(doc, sheet_name)
+            cell_range = sheet.getCellRangeByName(range_address)
+
+            # Build a tuple-of-tuples of numeric values where possible; pyuno
+            # coerces float/int to double and everything else must be a string.
+            rows = len(data)
+            cols = max(len(r) for r in data) if data else 0
+            if cell_range.Columns.Count < cols or cell_range.Rows.Count < rows:
+                return {"success": False,
+                        "error": f"range {range_address} ({cell_range.Rows.Count}x{cell_range.Columns.Count}) "
+                                 f"too small for {rows}x{cols} data"}
+            values = tuple(
+                tuple(float(c) if isinstance(c, (int, float)) and not isinstance(c, bool)
+                      else str(c) for c in r)
+                for r in data)
+            cell_range.setDataArray(values)
+            logger.info("Set %d x %d values on range %s", rows, cols, range_address)
+            return {"success": True, "range": range_address, "sheet": sheet.getName(),
+                    "rows": rows, "cols": cols}
+        except Exception as e:
+            logging.error(f"set_cell_range failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    def merge_cells(self, range_address: str, unmerge: bool = False,
+                    sheet_name: Optional[str] = None, doc: Any = None) -> Dict[str, Any]:
+        """Merge (or unmerge) a range of cells (e.g., 'A1:L1')."""
+        try:
+            if doc is None:
+                doc = self.get_active_document()
+            if not doc:
+                return {"success": False, "error": "No active document"}
+            if not self._is_calc(doc):
+                return {"success": False, "error": "Active document is not a spreadsheet"}
+            if not range_address:
+                return {"success": False, "error": "range_address is required"}
+
+            if "." in range_address and not sheet_name:
+                sheet_name, range_address = range_address.split(".", 1)
+
+            sheet = self._get_sheet(doc, sheet_name)
+            cell_range = sheet.getCellRangeByName(range_address)
+            mergeable = cell_range.getInterface().queryInterface(
+                "com.sun.star.table.XMergeable")
+            if unmerge:
+                mergeable.unmerge()
+                what = "Unmerged"
+            else:
+                mergeable.merge()
+                what = "Merged"
+            logger.info("%s range %s", what, range_address)
+            return {"success": True, "range": range_address,
+                    "sheet": sheet.getName(), "merged": not unmerge}
+        except Exception as e:
+            logging.error(f"merge_cells failed: {e}")
+            return {"success": False, "error": str(e)}
+
     def list_sheets(self, doc: Any = None) -> Dict[str, Any]:
         """List all sheet names in the document."""
         try:

@@ -749,6 +749,33 @@ class LibreOfficeMCPServer:
             "handler": self.format_cell_range_live
         }
 
+        self.tools["set_cell_range_live"] = {
+            "description": "Write a 2D array of values to a cell range in one operation (e.g., 'A1:C10'). Numbers become numeric values; everything else is text.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "range_address": {
+                        "type": "string",
+                        "description": "Target range like 'A1:C10' or 'Sheet1.A1:C10'"
+                    },
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {"type": ["number", "string"]}
+                        },
+                        "description": "2D array of rows (list of lists). Length and width must not exceed the target range."
+                    },
+                    "sheet_name": {
+                        "type": "string",
+                        "description": "Sheet name (optional)"
+                    }
+                },
+                "required": ["range_address", "data"]
+            },
+            "handler": self.set_cell_range_live
+        }
+
         self.tools["list_sheets_live"] = {
             "description": "List all sheet names in the current Calc document",
             "parameters": {
@@ -1112,6 +1139,11 @@ class LibreOfficeMCPServer:
                                sheet_name: str = None) -> Dict[str, Any]:
         """Format a range of cells (bold, italic, underline, font_size, font_name, background_color, border)"""
         return self.uno_bridge.format_cell_range(range_address, formatting, sheet_name)
+
+    def set_cell_range_live(self, range_address: str, data: List[List[Any]],
+                            sheet_name: str = None) -> Dict[str, Any]:
+        """Write a 2D array of values to a cell range in one operation"""
+        return self.uno_bridge.set_cell_range(range_address, data, sheet_name)
 
     def list_sheets_live(self) -> Dict[str, Any]:
         """List all sheet names"""
