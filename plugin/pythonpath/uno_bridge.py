@@ -2543,6 +2543,91 @@ class UNOBridge:
             logger.error(f"get_active_sheet_name failed: {e}")
             return {"success": False, "error": str(e)}
 
+    def rename_sheet(self, sheet_name: Optional[str], new_name: Optional[str],
+                     doc: Any = None) -> Dict[str, Any]:
+        """Rename a sheet in the document."""
+        try:
+            if doc is None:
+                doc = self.get_active_document()
+            if not doc:
+                return {"success": False, "error": "No active document"}
+            if not self._is_calc(doc):
+                return {"success": False, "error": "Active document is not a spreadsheet"}
+            if not sheet_name or not new_name:
+                return {"success": False, "error": "sheet_name and new_name are required"}
+
+            sheets = doc.getSheets()
+            if new_name != sheet_name and sheets.hasByName(new_name):
+                return {"success": False, "error": f"Sheet '{new_name}' already exists"}
+            sheet = sheets.getByName(sheet_name)
+            sheet.setName(new_name)
+            return {"success": True, "old_name": sheet_name, "new_name": new_name}
+        except Exception as e:
+            detail = getattr(e, "Message", None) or str(e) or repr(e)
+            logger.error(f"rename_sheet failed: {detail} ({e!r})")
+            return {"success": False, "error": detail}
+
+    def duplicate_sheet(self, sheet_name: Optional[str], new_name: Optional[str],
+                        position: Optional[int] = None,
+                        doc: Any = None) -> Dict[str, Any]:
+        """Duplicate a sheet (contents and formatting)."""
+        try:
+            if doc is None:
+                doc = self.get_active_document()
+            if not doc:
+                return {"success": False, "error": "No active document"}
+            if not self._is_calc(doc):
+                return {"success": False, "error": "Active document is not a spreadsheet"}
+            if not sheet_name or not new_name:
+                return {"success": False, "error": "sheet_name and new_name are required"}
+
+            sheets = doc.getSheets()
+            if not sheets.hasByName(sheet_name):
+                return {"success": False, "error": f"Sheet '{sheet_name}' not found"}
+            if sheets.hasByName(new_name):
+                return {"success": False, "error": f"Sheet '{new_name}' already exists"}
+
+            if position is None:
+                position = sheets.getCount()
+            position = max(0, min(position, sheets.getCount()))
+
+            sheets.copyByName(sheet_name, new_name, position)
+            return {"success": True, "source": sheet_name,
+                    "new_name": new_name, "position": position}
+        except Exception as e:
+            import traceback as _tb
+            logger.error("duplicate_sheet failed: %r (%s)",
+                         e, type(e).__name__)
+            logger.error(_tb.format_exc())
+            detail = getattr(e, "Message", None) or str(e) or type(e).__name__
+            return {"success": False, "error": detail}
+
+    def delete_sheet(self, sheet_name: Optional[str],
+                     doc: Any = None) -> Dict[str, Any]:
+        """Delete a sheet from the document."""
+        try:
+            if doc is None:
+                doc = self.get_active_document()
+            if not doc:
+                return {"success": False, "error": "No active document"}
+            if not self._is_calc(doc):
+                return {"success": False, "error": "Active document is not a spreadsheet"}
+            if not sheet_name:
+                return {"success": False, "error": "sheet_name is required"}
+
+            sheets = doc.getSheets()
+            if not sheets.hasByName(sheet_name):
+                return {"success": False, "error": f"Sheet '{sheet_name}' not found"}
+            if sheets.getCount() <= 1:
+                return {"success": False, "error": "Cannot delete the last sheet"}
+
+            sheets.removeByName(sheet_name)
+            return {"success": True, "deleted": sheet_name}
+        except Exception as e:
+            detail = getattr(e, "Message", None) or str(e) or repr(e)
+            logger.error(f"delete_sheet failed: {detail} ({e!r})")
+            return {"success": False, "error": detail}
+
     def _is_calc(self, doc: Any) -> bool:
         """Check if document is a Calc spreadsheet."""
         return self._get_document_type(doc) == "calc"

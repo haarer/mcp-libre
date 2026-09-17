@@ -735,6 +735,63 @@ class LibreOfficeMCPServer:
             "handler": self.list_sheets_live
         }
 
+        self.tools["rename_sheet_live"] = {
+            "description": "Rename a sheet in the current Calc document",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sheet_name": {
+                        "type": "string",
+                        "description": "Current sheet name"
+                    },
+                    "new_name": {
+                        "type": "string",
+                        "description": "New sheet name"
+                    }
+                },
+                "required": ["sheet_name", "new_name"]
+            },
+            "handler": self.rename_sheet_live
+        }
+
+        self.tools["duplicate_sheet_live"] = {
+            "description": "Duplicate a sheet in the current Calc document (copies contents and formatting)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sheet_name": {
+                        "type": "string",
+                        "description": "Name of the sheet to duplicate"
+                    },
+                    "new_name": {
+                        "type": "string",
+                        "description": "Name for the new sheet"
+                    },
+                    "position": {
+                        "type": "integer",
+                        "description": "0-based index where the new sheet is inserted (optional; default: end)"
+                    }
+                },
+                "required": ["sheet_name", "new_name"]
+            },
+            "handler": self.duplicate_sheet_live
+        }
+
+        self.tools["delete_sheet_live"] = {
+            "description": "Delete a sheet from the current Calc document",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sheet_name": {
+                        "type": "string",
+                        "description": "Name of the sheet to delete"
+                    }
+                },
+                "required": ["sheet_name"]
+            },
+            "handler": self.delete_sheet_live
+        }
+
         logger.info(f"Registered {len(self.tools)} MCP tools")
     
     async def execute_tool(self, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
@@ -1031,6 +1088,19 @@ class LibreOfficeMCPServer:
     def list_sheets_live(self) -> Dict[str, Any]:
         """List all sheet names"""
         return self.uno_bridge.list_sheets()
+
+    def rename_sheet_live(self, sheet_name: str, new_name: str) -> Dict[str, Any]:
+        """Rename a sheet"""
+        return self.uno_bridge.rename_sheet(sheet_name, new_name)
+
+    def duplicate_sheet_live(self, sheet_name: Optional[str], new_name: Optional[str],
+                             position: Optional[int] = None) -> Dict[str, Any]:
+        """Duplicate a sheet"""
+        return self.uno_bridge.duplicate_sheet(sheet_name, new_name, position)
+
+    def delete_sheet_live(self, sheet_name: str) -> Dict[str, Any]:
+        """Delete a sheet"""
+        return self.uno_bridge.delete_sheet(sheet_name)
 
 
 # Global instance
