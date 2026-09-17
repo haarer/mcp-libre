@@ -726,6 +726,29 @@ class LibreOfficeMCPServer:
             "handler": self.get_cell_range_live
         }
 
+        self.tools["format_cell_range_live"] = {
+            "description": "Format a range of cells in a Calc spreadsheet (e.g., 'A1:K11'). Supports bold, italic, underline, font_size, font_name, background_color, border.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "range_address": {
+                        "type": "string",
+                        "description": "Range like 'A1:K11' or 'Sheet1.A1:K11'"
+                    },
+                    "formatting": {
+                        "type": "object",
+                        "description": "Formatting options: bold (bool), italic (bool), underline (bool), font_size (int), font_name (str), background_color (int, RGB), border (bool)"
+                    },
+                    "sheet_name": {
+                        "type": "string",
+                        "description": "Sheet name (optional)"
+                    }
+                },
+                "required": ["range_address", "formatting"]
+            },
+            "handler": self.format_cell_range_live
+        }
+
         self.tools["list_sheets_live"] = {
             "description": "List all sheet names in the current Calc document",
             "parameters": {
@@ -1084,6 +1107,11 @@ class LibreOfficeMCPServer:
     def get_cell_range_live(self, range_address: str, sheet_name: str = None) -> Dict[str, Any]:
         """Get a range of cells as a 2D array"""
         return self.uno_bridge.get_cell_range(sheet_name, range_address)
+
+    def format_cell_range_live(self, range_address: str, formatting: Dict[str, Any],
+                               sheet_name: str = None) -> Dict[str, Any]:
+        """Format a range of cells (bold, italic, underline, font_size, font_name, background_color, border)"""
+        return self.uno_bridge.format_cell_range(range_address, formatting, sheet_name)
 
     def list_sheets_live(self) -> Dict[str, Any]:
         """List all sheet names"""

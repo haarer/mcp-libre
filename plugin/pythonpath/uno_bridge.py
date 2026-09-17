@@ -2511,6 +2511,64 @@ class UNOBridge:
             logger.error(f"get_cell_range failed: {e}")
             return {"success": False, "error": str(e)}
 
+    def format_cell_range(self, range_address: str, formatting: Dict[str, Any],
+                          sheet_name: Optional[str] = None, doc: Any = None) -> Dict[str, Any]:
+        """Format a cell range (e.g., 'A1:K11'). Supports bold, italic,
+        underline, font_size, font_name, background_color, and border."""
+        try:
+            if doc is None:
+                doc = self.get_active_document()
+            if not doc:
+                return {"success": False, "error": "No active document"}
+            if not self._is_calc(doc):
+                return {"success": False, "error": "Active document is not a spreadsheet"}
+            if not range_address:
+                return {"success": False, "error": "range_address is required"}
+
+            if "." in range_address and not sheet_name:
+                sheet_name, range_address = range_address.split(".", 1)
+
+            sheet = self._get_sheet(doc, sheet_name)
+            cell_range = sheet.getCellRangeByName(range_address)
+
+            if "bold" in formatting:
+                cell_range.CharWeight = 150.0 if formatting["bold"] else 100.0
+            if "italic" in formatting:
+                cell_range.CharPosture = 2 if formatting["italic"] else 0
+            if "underline" in formatting:
+                cell_range.CharUnderline = 1 if formatting["underline"] else 0
+            if "font_size" in formatting:
+                cell_range.CharHeight = float(formatting["font_size"])
+            if "font_name" in formatting:
+                cell_range.CharFontName = str(formatting["font_name"])
+            if "background_color" in formatting:
+                cell_range.CellBackColor = int(formatting["background_color"])
+            if "border" in formatting and formatting["border"]:
+                border_line = uno.createUnoStruct(
+                    "com.sun.star.table.BorderLine2")
+                border_line.Color = 0
+                border_line.LineStyle = 0
+                border_line.LineWidth = 10
+                border_line.OuterLineWidth = 10
+                cell_range.TopBorder = border_line
+                cell_range.BottomBorder = border_line
+                cell_range.LeftBorder = border_line
+                cell_range.RightBorder = border_line
+            elif "border" in formatting:
+                no_border = uno.createUnoStruct(
+                    "com.sun.star.table.BorderLine2")
+                cell_range.TopBorder = no_border
+                cell_range.BottomBorder = no_border
+                cell_range.LeftBorder = no_border
+                cell_range.RightBorder = no_border
+
+            logger.info("Formatted range %s on sheet %s", range_address, sheet.getName())
+            return {"success": True, "range": range_address,
+                    "sheet": sheet.getName(), "formatting": formatting}
+        except Exception as e:
+            logging.error(f"format_cell_range failed: {e}")
+            return {"success": False, "error": str(e)}
+
     def list_sheets(self, doc: Any = None) -> Dict[str, Any]:
         """List all sheet names in the document."""
         try:
