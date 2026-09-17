@@ -480,7 +480,8 @@ def text(action: str, content: str = None, bold: bool = None, italic: bool = Non
 @mcp.tool
 def spreadsheet(action: str, sheet_name: str = None, cell_address: str = None,
                 value: str = None, range_address: str = None, new_name: str = None,
-                position: int = None, data: list = None, formatting: dict = None) -> dict:
+                position: int = None, data: list = None, formatting: dict = None,
+                unmerge: bool = False, center: bool = False) -> dict:
     """
     Access Calc spreadsheet cells and sheets.
 
@@ -492,6 +493,7 @@ def spreadsheet(action: str, sheet_name: str = None, cell_address: str = None,
             - "get_range": Get a rectangular range of cells as a 2D array (requires range_address)
             - "set_range": Write a 2D array of values to a range (requires range_address, data)
             - "format_range": Format a range (requires range_address, formatting)
+            - "merge": Merge a range (requires range_address; optional center=True, unmerge=True)
             - "rename": Rename a sheet (requires sheet_name, new_name)
             - "duplicate": Duplicate a sheet with contents (requires sheet_name, new_name; optional position)
             - "delete": Delete a sheet (requires sheet_name; cannot delete the last sheet)
@@ -506,6 +508,8 @@ def spreadsheet(action: str, sheet_name: str = None, cell_address: str = None,
                     background_color (int, RGB), border (bool)
         new_name: New sheet name for "rename" and "duplicate"
         position: 0-based insertion index for "duplicate" (default: end of sheet list)
+        unmerge: Split a previously merged range for "merge" action
+        center: Horizontally center content for "merge" action
 
     Returns:
         Result based on action performed
@@ -547,6 +551,13 @@ def spreadsheet(action: str, sheet_name: str = None, cell_address: str = None,
         if sheet_name:
             body["sheet_name"] = sheet_name
         return call_libreoffice("/tools/format_cell_range_live", "POST", body)
+    elif action == "merge":
+        if range_address is None:
+            return {"error": "Action 'merge' requires parameter 'range_address'"}
+        body = {"range_address": range_address, "unmerge": unmerge, "center": center}
+        if sheet_name:
+            body["sheet_name"] = sheet_name
+        return call_libreoffice("/tools/merge_cells_live", "POST", body)
     elif action == "rename":
         if sheet_name is None or new_name is None:
             return {"error": "Action 'rename' requires parameters 'sheet_name' and 'new_name'"}
@@ -567,7 +578,7 @@ def spreadsheet(action: str, sheet_name: str = None, cell_address: str = None,
     else:
         return {"error": f"Invalid action '{action}'",
                 "valid_actions": ["list_sheets", "get_cell", "set_cell", "get_range",
-                                  "set_range", "format_range",
+                                  "set_range", "format_range", "merge",
                                   "rename", "duplicate", "delete"]}
 
 

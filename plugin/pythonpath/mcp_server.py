@@ -776,6 +776,33 @@ class LibreOfficeMCPServer:
             "handler": self.set_cell_range_live
         }
 
+        self.tools["merge_cells_live"] = {
+            "description": "Merge a range of cells in a Calc spreadsheet (e.g., 'A1:L1'). Optionally center the content (center=True). Use unmerge=True to split.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "range_address": {
+                        "type": "string",
+                        "description": "Range to merge like 'A1:L1' or 'Sheet1.A1:L1'"
+                    },
+                    "unmerge": {
+                        "type": "boolean",
+                        "description": "Unmerge the range instead of merging (default: False)"
+                    },
+                    "center": {
+                        "type": "boolean",
+                        "description": "Horizontally center content after merge (default: False)"
+                    },
+                    "sheet_name": {
+                        "type": "string",
+                        "description": "Sheet name (optional)"
+                    }
+                },
+                "required": ["range_address"]
+            },
+            "handler": self.merge_cells_live
+        }
+
         self.tools["list_sheets_live"] = {
             "description": "List all sheet names in the current Calc document",
             "parameters": {
@@ -1144,6 +1171,11 @@ class LibreOfficeMCPServer:
                             sheet_name: str = None) -> Dict[str, Any]:
         """Write a 2D array of values to a cell range in one operation"""
         return self.uno_bridge.set_cell_range(range_address, data, sheet_name)
+
+    def merge_cells_live(self, range_address: str, unmerge: bool = False,
+                         center: bool = False, sheet_name: str = None) -> Dict[str, Any]:
+        """Merge (or unmerge) a range of cells in a spreadsheet"""
+        return self.uno_bridge.merge_cells(range_address, unmerge, center, sheet_name)
 
     def list_sheets_live(self) -> Dict[str, Any]:
         """List all sheet names"""

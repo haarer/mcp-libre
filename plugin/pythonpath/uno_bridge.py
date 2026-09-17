@@ -2612,8 +2612,9 @@ class UNOBridge:
             return {"success": False, "error": str(e)}
 
     def merge_cells(self, range_address: str, unmerge: bool = False,
+                    center: bool = False,
                     sheet_name: Optional[str] = None, doc: Any = None) -> Dict[str, Any]:
-        """Merge (or unmerge) a range of cells (e.g., 'A1:L1')."""
+        """Merge (or unmerge) a range of cells (e.g., 'A1:L1'). Optionally center content."""
         try:
             if doc is None:
                 doc = self.get_active_document()
@@ -2629,13 +2630,13 @@ class UNOBridge:
 
             sheet = self._get_sheet(doc, sheet_name)
             cell_range = sheet.getCellRangeByName(range_address)
-            mergeable = cell_range.getInterface().queryInterface(
-                "com.sun.star.table.XMergeable")
             if unmerge:
-                mergeable.unmerge()
+                cell_range.merge(False)
                 what = "Unmerged"
             else:
-                mergeable.merge()
+                cell_range.merge(True)
+                if center:
+                    cell_range.HoriJustify = 2  # CellHoriJustify.CENTER
                 what = "Merged"
             logger.info("%s range %s", what, range_address)
             return {"success": True, "range": range_address,
